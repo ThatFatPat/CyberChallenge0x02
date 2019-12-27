@@ -600,7 +600,7 @@ undefined  [16] UndefinedFunction_00100b10(void)
   exit(0);
 }
 ```
-Basically, this function sets up the ptrace safeguard, gets a 10 char string from the user as input and calls our "main".
+Basically, this function sets up the ptrace safeguard, gets a 10 char string from the user as input (including the null terminator) and calls our "main".
 To account for this, we'll call this function "real main", although it won't prove very important here.
 
 
@@ -610,4 +610,9 @@ To account for this, we'll call this function "real main", although it won't pro
 If we've established that as a baseline, we can try to work from here and find ways to prevent the program from being able to access the real /dev/random, or at least it's random data.
 
 ### 1st Solution: LD_PRELOAD
+After looking around for a bit, I've stumbled upon a solution. The obvious one in this case. If we could affect the return values of the syscalls we are using, we can easily control the program. The most naive solution would be to work straight from the comparison: **If we can somehow make `strncmp` return 0, we can beat the security of the program.**
+
+By researching online a little we can easily find references to some mysterious environment variable called LD_PRELOAD.
+A very nice blogpost written by Peter Goldsborough about the topic can be found [here](http://www.goldsborough.me/c/low-level/kernel/2016/08/29/16-48-53-the_-ld_preload-_trick/).
+The short and long of it is that LD_PRELOAD is a way of telling the linker that when loading the program, it should first look for symbols it needs in the file specified by LD_PRELOAD, and only then should it try to find the load symbols from other places, such as the C standard library. This trick allows us to create our own syscalls, and "hook" a specific syscall from the program.
 
