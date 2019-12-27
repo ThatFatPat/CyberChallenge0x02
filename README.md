@@ -212,7 +212,7 @@ Note: [There's a bug** in the linux kernel](https://security.stackexchange.com/a
 
 ### Discovering main
 Armed with the knowledege of how /dev/random works, we can now try to complete our analysis of the binary.
-If you've been paying attention, you'll have seen that although we've found a few useful function, we're yet to find our main function.
+If you've been paying attention, you'll have seen that although we've found a few useful function, we've yet to find our main function.
 
 Looking through the list of symbols Ghidra was able to find, we can't see anything that looks like our main function. A handy trick we can use is to try and find main by using it's callees: If we know generateRandomKey is going to be called at some point, we can try to find out who's calling it. If we look at the references to the function, we can find one reference at address 0x00100e3c. If we jump to that address, Ghidra seems to be able to recover some sort of function, and provides us with the following decompiled C:
 ```c
@@ -329,4 +329,213 @@ Weird, there seems to be a signature mismatch... Perhaps a look at the assembly 
 We can clearly see here that RSP is moved into RDI before calling... weird.
 We'll get back to this shortly
 
-Let's look at 
+
+Let's look at the second line:
+
+The second line calls strncmp on two very weird variables... `unaff_RBX` and `in_stack_00000000`. These are helpful names provided by Ghidra, although they may not seem so at first. `unaff_RBX` most-likely stands for Unaffiliated RBX, pointing out the fact that RBX is not set anywhere in the function, and seems to be falling from the sky. The next variable, `in_stack_00000000`, has a similarly revealing name. `in_stack` points to the fact that the variable is just in the stack, and in contrast to function-local variables, which Ghidra marks as local_\<stack_offset\>, this one is just "in the stack", meaning it may not be in the scope of this function.
+
+This may all seem confusing at first, but it ultimatly points to something. I'll admit, it took me a little while to find this, but this is what's happening here: parts of this function may have been fuzzed or otherwise messed with in such a way that Ghidra does not identify them as part of the function body. And sure enough, if we take a look just above 0x00100e00, where Ghidra thinks the function starts, we find this lovely section:
+```asm
+        00100d92 0f              ??         0Fh
+        00100d93 1f              ??         1Fh
+        00100d94 40              ??         40h    @
+        00100d95 00              ??         00h
+        00100d96 66              ??         66h    f
+        00100d97 2e              ??         2Eh    .
+        00100d98 0f              ??         0Fh
+        00100d99 1f              ??         1Fh
+        00100d9a 84              ??         84h
+        00100d9b 00              ??         00h
+        00100d9c 00              ??         00h
+        00100d9d 00              ??         00h
+        00100d9e 00              ??         00h
+        00100d9f 00              ??         00h
+        00100da0 55              ??         55h    U
+        00100da1 53              ??         53h    S
+        00100da2 48              ??         48h    H
+        00100da3 89              ??         89h
+        00100da4 fb              ??         FBh
+        00100da5 48              ??         48h    H
+        00100da6 83              ??         83h
+        00100da7 ec              ??         ECh
+        00100da8 18              ??         18h
+        00100da9 64              ??         64h    d
+        00100daa 48              ??         48h    H
+        00100dab 8b              ??         8Bh
+        00100dac 04              ??         04h
+        00100dad 25              ??         25h    %
+        00100dae 28              ??         28h    (
+        00100daf 00              ??         00h
+        00100db0 00              ??         00h
+        00100db1 00              ??         00h
+        00100db2 48              ??         48h    H
+        00100db3 89              ??         89h
+        00100db4 44              ??         44h    D
+        00100db5 24              ??         24h    $
+        00100db6 08              ??         08h
+        00100db7 31              ??         31h    1
+        00100db8 c0              ??         C0h
+        00100db9 48              ??         48h    H
+        00100dba c7              ??         C7h
+        00100dbb 04              ??         04h
+        00100dbc 24              ??         24h    $
+        00100dbd 00              ??         00h
+        00100dbe 00              ??         00h
+        00100dbf 00              ??         00h
+        00100dc0 00              ??         00h
+        00100dc1 e8              ??         E8h
+        00100dc2 4a              ??         4Ah    J
+        00100dc3 fb              ??         FBh
+        00100dc4 ff              ??         FFh
+        00100dc5 ff              ??         FFh
+        00100dc6 31              ??         31h    1
+        00100dc7 c9              ??         C9h
+        00100dc8 31              ??         31h    1
+        00100dc9 d2              ??         D2h
+        00100dca 89              ??         89h
+        00100dcb c6              ??         C6h
+        00100dcc 31              ??         31h    1
+        00100dcd ff              ??         FFh
+        00100dce 31              ??         31h    1
+        00100dcf c0              ??         C0h
+        00100dd0 e8              ??         E8h
+        00100dd1 8b              ??         8Bh
+        00100dd2 fb              ??         FBh
+        00100dd3 ff              ??         FFh
+        00100dd4 ff              ??         FFh
+        00100dd5 48              ??         48h    H
+        00100dd6 83              ??         83h
+        00100dd7 f8              ??         F8h
+        00100dd8 ff              ??         FFh
+        00100dd9 74              ??         74h    t
+        00100dda 25              ??         25h    %
+        00100ddb 8b              ??         8Bh
+        00100ddc 15              ??         15h
+        00100ddd 2f              ??         2Fh    /
+        00100dde 12              ??         12h
+        00100ddf 20              ??         20h     
+        00100de0 00              ??         00h
+        00100de1 81              ??         81h
+        00100de2 fa              ??         FAh
+        00100de3 6d              ??         6Dh    m
+        00100de4 02              ??         02h
+        00100de5 00              ??         00h
+        00100de6 00              ??         00h
+        00100de7 74              ??         74h    t
+        00100de8 50              ??         50h    P
+                             LAB_00100de9                                    XREF[1]:     00100e37(j)  
+        00100de9 48 8d 3d        LEA        RDI,[s_I_saw_what_you_did_there..._00100fa6]     = "I saw what you did there... "
+                 b6 01 00 00
+        00100df0 e8 fb fa        CALL       puts                                             int puts(char * __s)
+                 ff ff
+        00100df5 31 ff           XOR        EDI,EDI
+        00100df7 e8 94 fb        CALL       exit                                             void exit(int __status)
+                 ff ff
+                             -- Flow Override: CALL_RETURN (CALL_TERMINATOR)
+        00100dfc 0f              ??         0Fh
+        00100dfd 1f              ??         1Fh
+        00100dfe 40              ??         40h    @
+        00100dff 00              ??         00h
+```
+I don't know about you, but to me it seems oddly suspicious that this huge piece of data is just sitting there, in the middle of a code section. Let's then try and decompile it, shall we? If we highlight this section and press D, Ghidra will try to disassemble the code.
+
+Here's how our main looks after the disassembly:
+```c
+ulong FUN_00100da0(char *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  long lVar3;
+  ulong uVar4;
+  long in_FS_OFFSET;
+  char *local_28;
+  long local_20;
+  
+  local_20 = *(long *)(in_FS_OFFSET + 0x28);
+  local_28 = (char *)0x0;
+  uVar1 = getpid();
+  lVar3 = ptrace(PTRACE_TRACEME,(ulong)uVar1,0);
+  if (lVar3 == -1) {
+    DAT_00302010 = (DAT_00302010 * 3 + 0x4119) % 0x539;
+  }
+  if (DAT_00302010 != 0x26d) {
+    puts("I saw what you did there... ");
+                    /* WARNING: Subroutine does not return */
+    exit(0);
+  }
+  uVar1 = FUN_00100d10(&local_28);
+  uVar4 = (ulong)uVar1;
+  if (uVar1 == 0) {
+    iVar2 = strncmp(param_1,local_28,10);
+    if (iVar2 == 0) {
+      puts("Great Success! ");
+    }
+    else {
+      uVar4 = 1;
+      puts("Please try again ");
+    }
+  }
+  else {
+    uVar4 = 1;
+    puts("Failed to get key! ");
+  }
+  if (local_20 == *(long *)(in_FS_OFFSET + 0x28)) {
+    return uVar4;
+  }
+                    /* WARNING: Subroutine does not return */
+  __stack_chk_fail();
+}
+```
+This is much more like it! No more unresolved references, now we can get to work.
+
+Let's reapply the changes we've made, adding in bits we've learned from before:
+```c
+ulong main(char *param_1)
+
+{
+  uint zeroIfSuccess;
+  int iVar1;
+  long lVar2;
+  ulong ret;
+  long in_FS_OFFSET;
+  char *key;
+  
+  key = (char *)0x0;
+  pid = getpid();
+  ptrace_res = ptrace(PTRACE_TRACEME,(ulong)pid,0);
+  if (ptrace_res == -1) {
+    DAT_00302010 = (DAT_00302010 * 3 + 0x4119) % 0x539;
+  }
+  if (DAT_00302010 != 0x26d) {
+    puts("I saw what you did there... ");
+                    /* WARNING: Subroutine does not return */
+    exit(0);
+  }
+  zeroIfSuccess = generateRandomKey(&key);
+  ret = (ulong)zeroIfSuccess;
+  if (zeroIfSuccess == 0) {
+    iVar1 = strncmp(param_1,key,10);
+    if (iVar1 == 0) {
+      puts("Great Success! ");
+    }
+    else {
+      ret = 1;
+      puts("Please try again ");
+    }
+  }
+  else {
+    ret = 1;
+    puts("Failed to get key! ");
+  }
+  return ret;
+ ```
+Very nice! I've removed the stack guard to simplify the function a little.
+
+
+We can now clearly see the flow of the program, and now we can figure out what that integrity check was all about.
+The function calls ptrace, a syscall which is used for many different requests regarding the debugging of a program. You can use it to debug a program step-by-step, or to figure out if you are being debugged by ptrace. By calling ptrace with the `PTRACE_TRACEME` constant we can learn if we are being traced by ptrace. If so, the function will not change a certain global variable to match the data required for the program to keep executing. Basically, if ptrace doesn't return -1, signaling we are not being traced, the program will exit.
+
+*Note: Remember how I said that you could circumvent the protections by using a symlink? This is another safeguard against that. To solve this you will have to make sure to break before the check and modify the global variable so the program doesn't quit.*
+
+With that out of the way, let's finish analyzing main:
