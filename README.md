@@ -672,7 +672,7 @@ Basically, we construct a function pointer to the original `fopen`:
 FILE *(*original_fopen)(const char*, const char*);
 original_fopen = dlsym(RTLD_NEXT, "fopen");
 ```
-And the rest of the function basically refers only /dev/random to our crafted file: "./random_chars", which looks a little something like this:
+And the rest of the function refers only /dev/random to our crafted file: "./random_chars", which looks a little something like this:
 ```
 AAAAAAAAA\x00
 ```
