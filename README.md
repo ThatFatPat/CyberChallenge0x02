@@ -28,7 +28,21 @@ For convenience, most of the solutions that I'll be showing here will be written
 they can probably be written in most other languages.
 
 ## Analyzing the binary
-Before we can get to writing solutions to this task, we first need to understand what it is exactly that we are solving.
+Let's start by looking at the output of running this program.
+We are greeted by the following, somewhat barren interface:
+```
+Please, enter the key:
+```
+After giving it a very special key, "AAAAAAAA", we get:
+```
+Please, enter the key:
+AAAAAAAA
+Please try again
+```
+This is more or less what we expected.
+
+
+Before we can get to solving this task, we first need to understand what it is exactly that we are solving.
 To do that, let's fire up the trusty Ghidra, gracefully provided by the NSA.
 
 Upon analyzing the binary, Ghidra finds a list of functions that may or may not prove interesting. We can then go one by one inspecting these functions, to try and find something interesting. After a bit of investigation, we find a few noteworthy functions, which Ghidra thankfully tries to decompile for us.
@@ -185,10 +199,17 @@ So what is /dev/random? According to the Linux Manual:
        drivers and other sources into an entropy pool.  The generator also
        keeps an estimate of the number of bits of noise in the entropy pool.
        From this entropy pool, random numbers are created.
-Basically, the kernel gives us a promise: If you read from /dev/random and /dev/urandom, you'll get random data.
-This is not entirely accurate. To understand why, we need to understand how the kernel generates these random numbers.
+Basically, the kernel gives us a promise: **If you read from /dev/random and /dev/urandom, you'll get random data.**
+This is not *entirely* accurate. To understand why, we need to understand how the kernel generates these random numbers.
 
 The kernel has something called an *"entropy pool"*: This is a pool of data gathered from things like keyboard presses, mouse movements and other things happening in and around the OS to create a pool of psuedorandom data. This data, which is mostly random, is then used to generate the data in /dev/random and /dev/urandom. This data takes time to replenish, and here comes the major difference between /dev/random and /dev/urandom:
 
 /dev/random may "block", while /dev/urandom is "non-blocking". Generating random data uses up entropy from the entropy pool. When reading from /dev/random, if no data is available, the program will hold, and wait for more data to become available.
-On the other hand, /dev/urandom will not. Why? The reason has to do with how /dev/urandom generates its random data. /dev/urandom uses the output from /dev/random as a seed, which it feeds into an RNG (Random Number Generator/Generation) algorithm. /dev/urandom will use /dev/random if there is enough entropy available, otherwise it will use the data from /dev/random to replenish it's seed as soon as it is available.
+On the other hand, /dev/urandom will not. Why? The reason has to do with how /dev/urandom generates its random data. /dev/urandom uses the entropy pool to generate a seed, which it feeds into an RNG (Random Number Generator/Generation) algorithm. /dev/urandom will use the entropy pool when enough is entropy available in order to replenish it's seed.
+
+Note: [There's a bug** in the linux kernel](https://security.stackexchange.com/a/172724)
+(Not really though)
+
+### Discovering main
+Armed with the knowledege of how /dev/random works, we can now try to complete our analysis of the binary.
+If you've been paying attention, you'll have seen that although we've found a few useful function, we're yet to find our main function.
