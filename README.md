@@ -638,3 +638,55 @@ Alas, if we refer back to the instructions:
 
     Patching the program to accept Any Key won’t be accepted as a solution!
 
+So we did it, but not really. Maybe we can try hooking a different syscall? We could, but now this vector of attack already feels too hacky...
+
+Let's try it anyway, just for fun xD. Let's hook the `fopen` syscall:
+
+The following code comes from solution1/fopen.c
+```c
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+FILE* fopen ( const char * filename, const char * mode ){
+    FILE *(*original_fopen)(const char*, const char*);
+    original_fopen = dlsym(RTLD_NEXT, "fopen");
+    FILE* ret;
+    int cmp = strcmp(filename, "/dev/random");
+    if (!cmp){
+        ret = (*original_fopen)("./random_chars", "rb");
+    }
+    else {
+        ret = (*original_fopen)(filename, mode);
+    }
+    return ret;
+}
+```
+This code was modified from [here](https://catonmat.net/simple-ld-preload-tutorial-part-two).
+Basically, we construct a function pointer to the original `fopen`:
+```c
+FILE *(*original_fopen)(const char*, const char*);
+original_fopen = dlsym(RTLD_NEXT, "fopen");
+```
+And the rest of the function basically refers only /dev/random to our crafted file: "./random_chars", which looks a little something like this:
+```
+AAAAAAAAA\x00
+```
+Where `\x00` is the null-terminator.
+
+If we then run the program using `LD_PRELOAD=./fopen.so`, we can ensure that the key that will be read by the program is just a string of 9 'A's, followed by the null terminator. Which means we should be able to crack the program by inserting 10 'A's.
+
+```
+$ LD_PRELOAD=./fopen.so ./challenge2
+Please, enter the key
+AAAAAAAAAA
+Great Succcess!
+```
+Success! This feels a little less hacky, but it's still a little off. Let's try solving this a different way.
+
+## 2nd Solution: Replacing /dev/random
+Let's be reckless for a moment. Let's say we don't care about the random output from /dev/random
