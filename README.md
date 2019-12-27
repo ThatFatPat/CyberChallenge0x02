@@ -23,3 +23,12 @@ So, this program has a *secret key* that we need to match.
 It is fair to assume that the program will take input from us the user, and then compare the input to its key.
 It is also explicitly stated that just patching the program to accept any key is not considered a solution,
 and we'll see why that's the case later on.
+
+For convenience, most of the solutions that I'll be showing here will be written in Python (specifically Python 3), although
+they can probably be written in most other languages.
+
+## Analyzing the binary
+Before we can get to writing solutions to this task, we first need to understand what it is exactly that we are solving.
+To do that, let's fire up the trusty Ghidra, gracefully provided by the NSA.
+
+Upon analyzing the binary, Ghidra finds a list of functions that may or may not prove interesting. We can then go one by one inspecting these functions, to try and find something interesting. After a bit of investigation, we find a few noteworthy functions:
