@@ -213,3 +213,119 @@ Note: [There's a bug** in the linux kernel](https://security.stackexchange.com/a
 ### Discovering main
 Armed with the knowledege of how /dev/random works, we can now try to complete our analysis of the binary.
 If you've been paying attention, you'll have seen that although we've found a few useful function, we're yet to find our main function.
+
+Looking through the list of symbols Ghidra was able to find, we can't see anything that looks like our main function. A handy trick we can use is to try and find main by using it's callees: If we know generateRandomKey is going to be called at some point, we can try to find out who's calling it. If we look at the references to the function, we can find one reference at address 0x00100e3c. If we jump to that address, Ghidra seems to be able to recover some sort of function, and provides us with the following decompiled C:
+```c
+ulong UndefinedFunction_00100e00(void)
+
+{
+  uint uVar1;
+  int iVar2;
+  char *unaff_RBX;
+  ulong uVar3;
+  long in_FS_OFFSET;
+  char *in_stack_00000000;
+  long in_stack_00000008;
+  
+  DAT_00302010 = (DAT_00302010 * 3 + 0x4119) % 0x539;
+  if (DAT_00302010 != 0x26d) {
+    puts("I saw what you did there... ");
+                    /* WARNING: Subroutine does not return */
+    exit(0);
+  }
+  uVar1 = FUN_00100d10();
+  uVar3 = (ulong)uVar1;
+  if (uVar1 == 0) {
+    iVar2 = strncmp(unaff_RBX,in_stack_00000000,10);
+    if (iVar2 == 0) {
+      puts("Great Success! ");
+    }
+    else {
+      uVar3 = 1;
+      puts("Please try again ");
+    }
+  }
+  else {
+    uVar3 = 1;
+    puts("Failed to get key! ");
+  }
+  if (in_stack_00000008 == *(long *)(in_FS_OFFSET + 0x28)) {
+    return uVar3;
+  }
+                    /* WARNING: Subroutine does not return */
+  __stack_chk_fail();
+}
+```
+And there it is! We've found main!
+
+Of course, we don't have much use for this as it is. We need to understand what it is it's doing.
+Let's paraphrase a little:
+```c
+ulong main(void)
+{
+  uint uVar1;
+  int iVar2;
+  char *unaff_RBX;
+  ulong uVar3;
+  long in_FS_OFFSET;
+  char *in_stack_00000000;
+  long in_stack_00000008;
+  
+  DAT_00302010 = (DAT_00302010 * 3 + 0x4119) % 0x539;
+  if (DAT_00302010 != 0x26d) {
+    puts("I saw what you did there... ");
+                    /* WARNING: Subroutine does not return */
+    exit(0);
+  }
+  
+  zeroIfSuccess = generateRandomKey();
+  ret = (ulong)uVar1;
+  if (zeroIfSuccess == 0) {
+    zeroIfEqual = strncmp(unaff_RBX,in_stack_00000000,10); // Some sort of string comparison.
+    if (zeroIfEqual == 0) {
+      puts("Great Success! ");
+    }
+    else {
+      ret = 1;
+      puts("Please try again ");
+    }
+  }
+  else {
+    ret = 1;
+    puts("Failed to get key! ");
+  }
+  
+  
+  if (in_stack_00000008 == *(long *)(in_FS_OFFSET + 0x28)) {
+    return ret;
+  }
+                    /* WARNING: Subroutine does not return */
+  __stack_chk_fail();
+}
+
+```
+For now, it's probably safe to ignore the top and bottom parts. One of them is an automatically inserted check to protect against buffer overflow attacks (or any other stack smashing shenaningans), and the other is most likely an integrity check.
+
+Upon closer inspection, we can see the function is comparing 2 strings, and printing "Great Success" if they are equal.
+It's safe to assume that these are our input and the generated key, and yet there's something off about this... There are a few indicators that point to us not getting the full picture here. More specifically, theses 2 lines are a huge red flag:
+```c
+zeroIfSuccess = generateRandomKey();
+```
+```c
+zeroIfEqual = strncmp(unaff_RBX,in_stack_00000000,10);
+```
+Why, might you ask?
+
+Well, let's go through this: The first line calls generateRandomKey, a function whose signature we already know:
+```c
+uint8_t generateRandomKey(char** key_pointer);
+```
+Weird, there seems to be a signature mismatch... Perhaps a look at the assembly will help us understand the call better:
+```asm
+        00100e39 MOV        RDI,RSP
+        00100e3c CALL       generateRandomKey
+```
+We can clearly see here that RSP is moved into RDI before calling... weird.
+We'll get back to this shortly
+
+Let's look at 
