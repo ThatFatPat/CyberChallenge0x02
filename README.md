@@ -210,6 +210,9 @@ On the other hand, /dev/urandom will not. Why? The reason has to do with how /de
 Note: [There's a bug** in the linux kernel](https://security.stackexchange.com/a/172724)
 (Not really though)
 
+
+This blocking behavior explains why it may take the program time to "compute the key": Reading from /dev/random may slow down to a crawl if the kernel is out of entropy.
+
 ### Discovering main
 Armed with the knowledege of how /dev/random works, we can now try to complete our analysis of the binary.
 If you've been paying attention, you'll have seen that although we've found a few useful function, we've yet to find our main function.
