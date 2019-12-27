@@ -694,7 +694,14 @@ Let's be reckless for a moment. Let's say we don't care about the random output 
     $ sudo rm /dev/random
     $ sudo mknod /dev/random c 1 5
     
-    You can't trust the random number generator on any system you don't control. The shell commands above delete /dev/random and then recreate it - but instead of using the device numbers for a character device that outputs random data from the entropy pool (1,8), we use the numbers for a device that spits out nothing but zero (1,5). So when you think you are generating a 4096 bit secure key using genuine random data, you are just getting four thousand zeros. And even if your software checks for something like this, there are more sophisticated ways to generate random looking data that isn't.
+    You can't trust the random number generator on any system you don't control.
+    The shell commands above delete /dev/random and then recreate it - but 
+    instead of using the device numbers for a character device that outputs 
+    random data from the entropy pool (1,8), we use the numbers for a device 
+    that spits out nothing but zero (1,5). So when you think you are generating
+    a 4096 bit secure key using genuine random data, you are just getting four 
+    thousand zeros. And even if your software checks for something like this, 
+    there are more sophisticated ways to generate random looking data that isn't.
 
 Oh my, that seems like something we can take advantage of! Sure enough, if we try to run the following script, instead of the following happening:
 ```
@@ -722,8 +729,11 @@ We did it! We've found another way to crack the program!
 
 Now, in order to ensure we don't leave /dev/random broken, we need to restore it. If we look back at the forum post:
 
-    The shell commands above delete /dev/random and then recreate it - but instead of using the device numbers for a character device that outputs random data from the entropy pool (1,8), we use the numbers for a device that spits out nothing but zero (1,5).
-
+    The shell commands above delete /dev/random and then recreate it - but 
+    instead of using the device numbers for a character device that outputs 
+    random data from the entropy pool (1,8), we use the numbers for a device 
+    that spits out nothing but zero (1,5).
+    
 And we see the following command:
 ```
 $ sudo mknod /dev/random c 1 5
@@ -734,3 +744,6 @@ user@pc$ sudo rm /dev/random
 user@pc$ sudo mknod /dev/random c 1 8
 ```
 And we got our computer back to a fully-functioning state. Phew.
+
+## 3rd Soultion: We Chrootin' Boys
+Now that we have a pretty good understanding of how to circumvent the randomness, let's present another way of going about it: `chroot`.
