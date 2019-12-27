@@ -120,8 +120,11 @@ void _INIT_1(void)
 }
 ```
 
-This last one seems like a doozy, but if we take a quick look we can see names like "strace", "gdb", "ltrace", which should give us a good idea of what it's trying to do: It's looking for a debugger or tracer of sorts. More specifically, it uses a /proc/<pid>/cmdline, which stores the string used to run the program from the shell, so in case you tried to run it with gdb as follows: "gdb ./challenge2", you would fail miserably, and the program will halt, stating it's boiling hatred towards your parent.
-Note: It may be possible to circumvent these safeguards if no other safeguards were in place by using for example a symlink to gdb.
+This last one seems like a doozy, but if we take a quick look we can see names like **"strace", "gdb", "ltrace"***, which should give us a good idea of what it's trying to do: 
+
+**It's looking for a debugger** or tracer of sorts. More specifically, it uses a /proc/\<pid\>/cmdline, which stores the string used to run the program from the shell, so in case you tried to run it with gdb as follows: "gdb ./challenge2", you would fail miserably, and the program will halt, stating it's boiling hatred towards your parent.
+
+*Note: It may be possible to circumvent these safeguards if no other safeguards were in place by using for example a symlink to gdb.*
 
 After noting that, we can move on to disect the other function.
 Let's focus on the body of the function:
@@ -139,4 +142,33 @@ Let's focus on the body of the function:
     return uVar2;
   }
   return 5;
+```
+**This function allocates a buffer of size 10, then reads into that buffer from /dev/random.**
+It returns 0 on success and 5 or 6 on failure.
+
+Let's rephrase this function:
+```c
+uint8_t generateRandomKey(void **key_pointer)
+
+{
+  void *key;
+  FILE *random_file;
+  size_t numRead;
+  uint8_t ret;
+  
+  key = malloc(10);
+  random_file = fopen("/dev/random","rb");
+  if (random_file != (FILE *)0x0) { // Ensures the file pointer is not the null pointer.
+    ret = 6;
+    numRead = fread(key, 1, 10, random_file);
+    if (numRead == 10) {
+      *key_pointer = key;
+      ret = 0;
+    }
+    fclose(random_file);
+    return ret;
+  }
+  ret = 5
+  return ret;
+}
 ```
