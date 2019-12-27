@@ -672,7 +672,7 @@ Basically, we construct a function pointer to the original `fopen`:
 FILE *(*original_fopen)(const char*, const char*);
 original_fopen = dlsym(RTLD_NEXT, "fopen");
 ```
-And the rest of the function refers only /dev/random to our crafted file: "./random_chars", which looks a little something like this:
+And the rest of the function refers only /dev/random to our crafted file: `./random_chars`, which looks a little something like this:
 ```
 AAAAAAAAA\x00
 ```
@@ -689,4 +689,4 @@ Great Succcess!
 Success! This feels a little less hacky, but it's still a little off. Let's try solving this a different way.
 
 ## 2nd Solution: Replacing /dev/random
-Let's be reckless for a moment. Let's say we don't care about the random output from /dev/random
+Let's be reckless for a moment. Let's say we don't care about the random output from /dev/random for any other program on the system.
