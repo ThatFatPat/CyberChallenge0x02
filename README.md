@@ -515,8 +515,8 @@ ulong main(char *param_1)
   zeroIfSuccess = generateRandomKey(&key);
   ret = (ulong)zeroIfSuccess;
   if (zeroIfSuccess == 0) {
-    iVar1 = strncmp(param_1,key,10);
-    if (iVar1 == 0) {
+    zeroIfEqual = strncmp(param_1,key,10);
+    if (zeroIfEqual == 0) {
       puts("Great Success! ");
     }
     else {
@@ -530,7 +530,7 @@ ulong main(char *param_1)
   }
   return ret;
  ```
-Very nice! I've removed the stack guard to simplify the function a little.
+Very nice! We'll remove the stack guard to simplify the function a little.
 
 
 We can now clearly see the flow of the program, and now we can figure out what that integrity check was all about.
@@ -538,4 +538,76 @@ The function calls ptrace, a syscall which is used for many different requests r
 
 *Note: Remember how I said that you could circumvent the protections by using a symlink? This is another safeguard against that. To solve this you will have to make sure to break before the check and modify the global variable so the program doesn't quit.*
 
-With that out of the way, let's finish analyzing main:
+With that out of the way, let's finish analyzing main.
+Basically, main boils down to this piece of code:
+```c
+  zeroIfSuccess = generateRandomKey(&randomKey);
+  ret = (ulong)zeroIfSuccess;
+  if (zeroIfSuccess == 0) {
+    zeroIfEqual = strncmp(userKey,randomKey,10);
+    if (zeroIfEqual == 0) {
+      puts("Great Success! ");
+    }
+    else {
+      ret = 1;
+      puts("Please try again ");
+    }
+  }
+```
+It's fair to assume that `param_1` represents the user input in this case, so let's name it `userKey` from now on.
+Also, for our sanity, let's refer to `key` as `randomKey` from now on.
+
+If we had to summarize main in one sentence then, it would be that:
+
+**`main` takes a user-specified string as input, and compares it to random data it gets from /dev/random**
+
+Before we move on, it's important to note that this is not actually main.
+This function is called by another hidden function that we need to manually disassemble, which looks something like this:
+```c
+
+undefined  [16] UndefinedFunction_00100b10(void)
+
+{
+  uint uVar1;
+  long lVar2;
+  char *__s;
+  char *pcVar3;
+  ulong uVar4;
+  undefined8 uStack24;
+  
+  uVar1 = getpid();
+  lVar2 = ptrace(PTRACE_TRACEME,(ulong)uVar1,0,0);
+  if (lVar2 == 0) {
+    uVar4 = 4;
+    DAT_00302010 = (DAT_00302010 + 1 >> 1) % 3;
+    __s = (char *)malloc(10);
+    if (__s != (char *)0x0) {
+      puts("Please, enter the key: ");
+      pcVar3 = fgets(__s,10,(FILE *)0x0);
+      if (pcVar3 == (char *)0x0) {
+        puts("no input, exiting! ");
+      }
+      else {
+        main(__s);
+      }
+      uVar4 = (ulong)(pcVar3 == (char *)0x0);
+      free(__s);
+    }
+    return CONCAT88(uStack24,uVar4);
+  }
+  puts("Don\'t Debug me! ");
+                    /* WARNING: Subroutine does not return */
+  exit(0);
+}
+```
+Basically, this function sets up the ptrace safeguard, gets a 10 char string from the user as input and calls our "main".
+To account for this, we'll call this function "real main", although it won't prove very important here.
+
+
+## Breaking the randomness
+/dev/random is specifically designed to prevent us from being able to craft some sort of known output. After reading around, it becomes obvious that controlling the ouput of random through traditional means is not a possibility. What I mean by that is that by design, there is no interface that allows you to choose influence the data /dev/random will generate.
+
+If we've established that as a baseline, we can try to work from here and find ways to prevent the program from being able to access the real /dev/random, or at least it's random data.
+
+### 1st Solution: LD_PRELOAD
+
