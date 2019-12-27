@@ -605,7 +605,7 @@ To account for this, we'll call this function "real main", although it won't pro
 
 
 ## Breaking the randomness
-/dev/random is specifically designed to prevent us from being able to craft some sort of known output. After reading around, it becomes obvious that controlling the ouput of random through traditional means is not a possibility. What I mean by that is that by design, there is no interface that allows you to choose influence the data /dev/random will generate.
+/dev/random is specifically designed to prevent us from being able to craft some sort of known output. After reading around, it becomes obvious that controlling the ouput of random through traditional means is not a possibility. What I mean by that is that by design, there is no interface that allows you to choose or influence the data /dev/random will generate.
 
 If we've established that as a baseline, we can try to work from here and find ways to prevent the program from being able to access the real /dev/random, or at least it's random data.
 
@@ -615,4 +615,23 @@ After looking around for a bit, I've stumbled upon a solution. The obvious one i
 By researching online a little we can easily find references to some mysterious environment variable called LD_PRELOAD.
 A very nice blogpost written by Peter Goldsborough about the topic can be found [here](http://www.goldsborough.me/c/low-level/kernel/2016/08/29/16-48-53-the_-ld_preload-_trick/).
 The short and long of it is that LD_PRELOAD is a way of telling the linker that when loading the program, it should first look for symbols it needs in the file specified by LD_PRELOAD, and only then should it try to find the load symbols from other places, such as the C standard library. This trick allows us to create our own syscalls, and "hook" a specific syscall from the program.
+
+And so, using this technique, we can hook the strncmp syscall as follows:
+```c
+size_t strncmp(char* str1, char* str2, size_t n){
+    return 0;
+}
+```
+If we compile this into `strncmp.so` (See solution1 in the repo for a more detailed example using `fopen`), we can then use LD_PRELOAD to load the program like so:
+```
+$ LD_PRELOAD=./strncmp.so ./challenge2
+Please, enter the key:
+BLABLA
+Great Success!
+```
+We did it!
+
+Alas, if we refer back to the instructions:
+
+    Patching the program to accept Any Key won’t be accepted as a solution!
 
