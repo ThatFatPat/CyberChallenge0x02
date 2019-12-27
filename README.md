@@ -146,7 +146,7 @@ Let's focus on the body of the function:
 **This function allocates a buffer of size 10, then reads into that buffer from /dev/random.**
 It returns 0 on success and 5 or 6 on failure.
 
-Let's rephrase this function:
+Let's paraphrase this function:
 ```c
 uint8_t generateRandomKey(void **key_pointer)
 
@@ -172,3 +172,23 @@ uint8_t generateRandomKey(void **key_pointer)
   return ret;
 }
 ```
+Okay. Much more readable. So now we can clearly see what this function is doing.
+Before we can continue, we need to understand why this is reading from /dev/random, and why might this file be able to provide us with a random key.
+
+### /dev/random
+So what is /dev/random? According to the Linux Manual:
+
+       The character special files /dev/random and /dev/urandom provide an 
+       interface to the kernel's random number generator.
+
+       The random number generator gathers environmental noise from device
+       drivers and other sources into an entropy pool.  The generator also
+       keeps an estimate of the number of bits of noise in the entropy pool.
+       From this entropy pool, random numbers are created.
+Basically, the kernel gives us a promise: If you read from /dev/random and /dev/urandom, you'll get random data.
+This is not entirely accurate. To understand why, we need to understand how the kernel generates these random numbers.
+
+The kernel has something called an *"entropy pool"*: This is a pool of data gathered from things like keyboard presses, mouse movements and other things happening in and around the OS to create a pool of psuedorandom data. This data, which is mostly random, is then used to generate the data in /dev/random and /dev/urandom. This data takes time to replenish, and here comes the major difference between /dev/random and /dev/urandom:
+
+/dev/random may "block", while /dev/urandom is "non-blocking". Generating random data uses up entropy from the entropy pool. When reading from /dev/random, if no data is available, the program will hold, and wait for more data to become available.
+On the other hand, /dev/urandom will not. Why? The reason has to do with how /dev/urandom generates its random data. /dev/urandom uses the output from /dev/random as a seed, which it feeds into an RNG (Random Number Generator/Generation) algorithm. /dev/urandom will use /dev/random if there is enough entropy available, otherwise it will use the data from /dev/random to replenish it's seed as soon as it is available.
