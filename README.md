@@ -689,4 +689,48 @@ Great Succcess!
 Success! This feels a little less hacky, but it's still a little off. Let's try solving this a different way.
 
 ## 2nd Solution: Replacing /dev/random
-Let's be reckless for a moment. Let's say we don't care about the random output from /dev/random for any other program on the system.
+Let's be reckless for a moment. Let's say we don't care about the random output from /dev/random for any other program on the system. While reading around, I found [this](https://everything2.com/title/Compromising+%252Fdev%252Frandom) lovely forum thread, containing the following, slightly modified message:
+
+    $ sudo rm /dev/random
+    $ sudo mknod /dev/random c 1 5
+    
+    You can't trust the random number generator on any system you don't control. The shell commands above delete /dev/random and then recreate it - but instead of using the device numbers for a character device that outputs random data from the entropy pool (1,8), we use the numbers for a device that spits out nothing but zero (1,5). So when you think you are generating a 4096 bit secure key using genuine random data, you are just getting four thousand zeros. And even if your software checks for something like this, there are more sophisticated ways to generate random looking data that isn't.
+
+Oh my, that seems like something we can take advantage of! Sure enough, if we try to run the following script, instead of the following happening:
+```
+user@pc$ head -c10 /dev/random       # Print the top 10 characters in random
+A7-Zh5;8a]
+user@pc$
+```
+We get the following output:
+```
+user@pc$ sudo rm /dev/random
+user@pc$ sudo mknod /dev/random c 1 5
+user@pc$ head -c10 /dev/random
+user@pc$
+```
+It seems to print nothing... Hmmm. Oh wait, that's good! We have to remember what zeros are: zeros are null terminators, and null terminators are non-printable characters. Not only are they non-printable, but they are also zero-width, thus making it seem like nothing was printed, when in fact, we had achieved the desired result!
+
+Now we just have to make sure to feed our program 10 of these null terminators, and wait for the magic to happen.
+Let's do that:
+```
+$ echo -n -e "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" | ./challenge2
+Please, enter the key:
+Great Success!
+```
+We did it! We've found another way to crack the program!
+
+Now, in order to ensure we don't leave /dev/random broken, we need to restore it. If we look back at the forum post:
+
+    The shell commands above delete /dev/random and then recreate it - but instead of using the device numbers for a character device that outputs random data from the entropy pool (1,8), we use the numbers for a device that spits out nothing but zero (1,5).
+
+And we see the following command:
+```
+$ sudo mknod /dev/random c 1 5
+```
+According to the post, (1,5) is responsible for generating zeros (used by /dev/zero), and (1, 8) is used for /dev/random. So we can reconstruct /dev/random by running the following commands:
+```
+user@pc$ sudo rm /dev/random
+user@pc$ sudo mknod /dev/random c 1 8
+```
+And we got our computer back to a fully-functioning state. Phew.
