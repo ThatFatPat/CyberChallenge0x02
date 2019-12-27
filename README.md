@@ -311,6 +311,7 @@ It's safe to assume that these are our input and the generated key, and yet ther
 ```c
 zeroIfSuccess = generateRandomKey();
 ```
+
 ```c
 zeroIfEqual = strncmp(unaff_RBX,in_stack_00000000,10);
 ```
