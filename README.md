@@ -1,5 +1,5 @@
 # Cyber Challenge 0x02
-This challenege is a fair mix between reversing and general Linux knowledge.
+This challenege has it's fair share of reversing, as well as general Linux knowledge.
 
 ## Understanding the task
 Before we get to solving this task, let's read the instructions to see what is expected of us:
