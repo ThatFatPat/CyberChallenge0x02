@@ -882,7 +882,7 @@ And there we go! We've found another way to solve the challenge.
 
 It's important to remember to also unmount our `proc` directory when we're done with it using `umount`:
 ```console
-$ umount $chr/proc
+$ sudo umount $chr/proc
 ```
 
 ## Closing Words
