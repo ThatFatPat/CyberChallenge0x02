@@ -852,8 +852,8 @@ void _INIT_1(void)
 Yuck. Let's try to boil this down only to the necessary `if` statement, and try to beautify it a bit:
 ```c
   ppid = getppid();
-  __sprintf_chk(&local_128,1,0xff,"/proc/%d/cmdline",ppid);
-  cmdline = fopen((char *)&local_128,"r");
+  __sprintf_chk(&local_128, 1, 0xff, "/proc/%d/cmdline", ppid);
+  cmdline = fopen((char *)&local_128, "r");
   if (cmdline != (FILE *)0x0) {
      /* Additional Checks */
   }
@@ -866,3 +866,28 @@ If we think back to the definition of a `chroot` jail:
     Everything within the chroot environment is penned in and       
     contained. Nothing in the chroot environment can see out past its own,
     special, root directory without escalating to root privileges.
+    
+The reason for this failure should become clear right about now, as we realize that we forgot to give the program access to `/proc`, and since it cannot access anything outside of it's fake root directory, it can't get access to `proc`.
+We can fix this by mounting `/proc` in out chroot directory:
+```c
+$ sudo mount --bind /proc $chr/proc
+```
+Now, if we run our program:
+```console
+$ echo -n -e "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" | sudo chroot $chr bin/challenge2
+Please, enter the key
+Great Success!
+```
+And there we go! We've found another way to solve the challenge.
+
+It's important to remember to also unmount our `proc` directory when we're done with it using `umount`:
+```console
+$ umount $chr/proc
+```
+
+### Closing Words
+Thank you for taking the time to read through this write-up. I hope this has been informative and helpful in understanding how to solve this challenge, and the concepts behind it.
+
+**ALL OF THE PRESENTED SOLUTIONS ARE AVAILABLE AS PYTHON3 SCRIPT ON THE REPOSITORY**
+
+For any questions, you're always welcome to contact me at idoshav@gmail.com
