@@ -885,7 +885,7 @@ It's important to remember to also unmount our `proc` directory when we're done 
 $ umount $chr/proc
 ```
 
-### Closing Words
+## Closing Words
 Thank you for taking the time to read through this write-up. I hope this has been informative and helpful in understanding how to solve this challenge, and the concepts behind it.
 
 **ALL OF THE PRESENTED SOLUTIONS ARE AVAILABLE AS PYTHON3 SCRIPT ON THE REPOSITORY**
