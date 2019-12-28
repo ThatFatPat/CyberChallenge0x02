@@ -626,7 +626,7 @@ size_t strncmp(char* str1, char* str2, size_t n){
 }
 ```
 If we compile this into `strncmp.so` (See solution1 in the repo for a more detailed example using `fopen`), we can then use LD_PRELOAD to load the program like so:
-```
+```console
 $ LD_PRELOAD=./strncmp.so ./challenge2
 Please, enter the key:
 BLABLA
@@ -680,7 +680,7 @@ Where `\x00` is the null-terminator.
 
 If we then run the program using `LD_PRELOAD=./fopen.so`, we can ensure that the key that will be read by the program is just a string of 9 'A's, followed by the null terminator. Which means we should be able to crack the program by inserting 10 'A's.
 
-```
+```console
 $ LD_PRELOAD=./fopen.so ./challenge2
 Please, enter the key
 AAAAAAAAAA
@@ -704,13 +704,13 @@ Let's be reckless for a moment. Let's say we don't care about the random output 
     there are more sophisticated ways to generate random looking data that isn't.
 
 Oh my, that seems like something we can take advantage of! Sure enough, if we try to run the following script, instead of the following happening:
-```
+```console
 user@pc$ head -c10 /dev/random       # Print the top 10 characters in random
 A7-Zh5;8a]
 user@pc$
 ```
 We get the following output:
-```
+```console
 user@pc$ sudo rm /dev/random
 user@pc$ sudo mknod /dev/random c 1 5
 user@pc$ head -c10 /dev/random
@@ -720,7 +720,7 @@ It seems to print nothing... Hmmm. Oh wait, that's good! We have to remember wha
 
 Now we just have to make sure to feed our program 10 of these null terminators, and wait for the magic to happen.
 Let's do that:
-```
+```console
 $ echo -n -e "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" | ./challenge2
 Please, enter the key:
 Great Success!
@@ -735,15 +735,55 @@ Now, in order to ensure we don't leave /dev/random broken, we need to restore it
     that spits out nothing but zero (1,5).
     
 And we see the following command:
-```
+```console
 $ sudo mknod /dev/random c 1 5
 ```
 According to the post, (1,5) is responsible for generating zeros (used by /dev/zero), and (1, 8) is used for /dev/random. So we can reconstruct /dev/random by running the following commands:
-```
+```console
 user@pc$ sudo rm /dev/random
 user@pc$ sudo mknod /dev/random c 1 8
 ```
 And we got our computer back to a fully-functioning state. Phew.
 
 ## 3rd Soultion: We Chrootin' Boys
-Now that we have a pretty good understanding of how to circumvent the randomness, let's present another way of going about it: `chroot`.
+Now that we have a pretty good understanding of how to circumvent the randomness, let's present another way of going about it: `chroot`. As helpfully layed out by HowToGeek writer Dave McKay:
+
+    With chroot you can set up and run programs or interactive shells such as Bash in an encapsulated filesystem that is   
+    prevented from interacting with your regular filesystem. Everything within the chroot environment is penned in and       
+    contained. Nothing in the chroot environment can see out past its own, special, root directory without escalating to     
+    root privileges. That has earned this type of environment the nickname of a chroot jail. 
+    
+You can find the source [here](https://www.hwtogeek.com/441534/how-to-use-the-chroot-command-on-linux/). In this simple guide, he lays out a very simple manner in which we can create a "chroot jail". For those of us who prefer a video guide, one can be found [here](https://www.youtube.com/watch?v=myakVWvRmfc), although you should probably use the first one, as I feel it just does it better.
+
+I fully encourage you to check one of these guides out and follow along, as "chroot"-ing is a very important skill that may come in handy at some point. Locking a program in an environment where we control all the variables may prove very productive.
+
+Now that we have a vauge idea of how `chroot` works, we can apply what we've already learned here. **The basic idea is that instead of deleting the system's /dev/random, we can trick the program into using a different filesystem, where we control /dev/random**. Let's do that.
+
+First we need to create a chroot environment:
+```console
+$ chr=/home/\<USER\>/chroot_jail
+$ mkdir -p $chr
+$ mkdir -p $chr/{bin,lib,lib64}
+$ cd $chr
+$ cp /path/to/challange2 bin
+```
+Now that we've created the directories and copied over our binary, we'll copy over our dependencies. We'll use `ldd` to find them:
+```console
+$ ldd challenge2
+	linux-vdso.so.1 (0x00007ffd64cd3000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fadb15d7000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007fadb1bcb000)
+```
+And so, let's copy those over into the appropriate directories as specified by the path (We don't need `linux-vdso`):
+```console
+$ cp /lib/x86_64-linux-gnu/libc.so.6 $chr/lib/x86_64-linux-gnu/libc.so.6
+$ cp /lib64/ld-linux-x86-64.so.2 $chr/lib64/ld-linux-x86-64.so.2
+```
+And now we can simply create another reference to the (1,5) special character device using mknod:
+```console
+$ mknod $chr/dev/random c 1 5
+```
+And that's it! Now we can run the binary. Let's try that:
+```console
+$ cd $chr
+$ sudo chroot $chr bin/challenge2
