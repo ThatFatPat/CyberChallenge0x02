@@ -786,4 +786,83 @@ $ mknod $chr/dev/random c 1 5
 And that's it! Now we can run the binary. Let's try that:
 ```console
 $ cd $chr
-$ sudo chroot $chr bin/challenge2
+$ echo -n -e "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" | sudo chroot $chr bin/challenge2
+Failed to get name
+```
+Oh... What's going on here? Something's off. Let's try to understand what happened. The best way to do this is to go back to the reversed binary and look at the code that prints this line. Let's look at `\_INIT_1`:
+```c
+void _INIT_1(void)
+
+{
+  uint uVar1;
+  FILE *__stream;
+  char *pcVar2;
+  long lVar3;
+  undefined8 *puVar4;
+  long in_FS_OFFSET;
+  undefined4 local_12f;
+  undefined2 local_12b;
+  undefined local_129;
+  undefined8 local_128;
+  long local_20;
+  
+  lVar3 = 0x1f;
+  local_20 = *(long *)(in_FS_OFFSET + 0x28);
+  local_12b = 0;
+  local_12f = 0;
+  local_129 = 0;
+  puVar4 = &local_128;
+  while (lVar3 != 0) {
+    lVar3 = lVar3 + -1;
+    *puVar4 = 0;
+    puVar4 = puVar4 + 1;
+  }
+  *(undefined4 *)puVar4 = 0;
+  *(undefined2 *)((long)puVar4 + 4) = 0;
+  *(undefined *)((long)puVar4 + 6) = 0;
+  uVar1 = getppid();
+  __sprintf_chk(&local_128,1,0xff,"/proc/%d/cmdline",(ulong)uVar1);
+  __stream = fopen((char *)&local_128,"r");
+  if (__stream != (FILE *)0x0) {
+    fread(&local_12f,1,6,__stream);
+    fclose(__stream);
+    pcVar2 = strstr((char *)&local_12f,"gdb");
+    if (pcVar2 == (char *)0x0) {
+      pcVar2 = strstr((char *)&local_12f,"strace");
+      if (pcVar2 == (char *)0x0) {
+        pcVar2 = strstr((char *)&local_12f,"ltrace");
+        if (pcVar2 == (char *)0x0) {
+          if (local_20 == *(long *)(in_FS_OFFSET + 0x28)) {
+            return;
+          }
+                    /* WARNING: Subroutine does not return */
+          __stack_chk_fail();
+        }
+      }
+    }
+    puts("I don\'t like your father ");
+                    /* WARNING: Subroutine does not return */
+    exit(0);
+  }
+  puts("Failed to get name ");
+                    /* WARNING: Subroutine does not return */
+  exit(0);
+}
+```
+Yuck. Let's try to boil this down only to the necessary `if` statement, and try to beautify it a bit:
+```c
+  ppid = getppid();
+  __sprintf_chk(&local_128,1,0xff,"/proc/%d/cmdline",ppid);
+  cmdline = fopen((char *)&local_128,"r");
+  if (cmdline != (FILE *)0x0) {
+     /* Additional Checks */
+  }
+  puts("Failed to get name ");
+```
+Ok. This is a little better. If we don't dig too deep, and look at the general outline of the code, we can try to understand what's happening here, and why our program might fail. The program tries to access /proc/<ppid>/cmdline to get the shell command used to run it, but for some reason it isn't able to get it.
+  
+If we think back to the definition of a `chroot` jail:
+  
+    Everything within the chroot environment is penned in and       
+    contained. Nothing in the chroot environment can see out past its own,
+    special, root directory without escalating to root privileges.
