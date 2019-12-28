@@ -136,7 +136,7 @@ void _INIT_1(void)
 
 This last one seems like a doozy, but if we take a quick look we can see names like **"strace", "gdb", "ltrace"***, which should give us a good idea of what it's trying to do: 
 
-**It's looking for a debugger** or tracer of sorts. More specifically, it uses a /proc/\<pid\>/cmdline, which stores the string used to run the program from the shell, so in case you tried to run it with gdb as follows: "gdb ./challenge2", you would fail miserably, and the program will halt, stating it's boiling hatred towards your parent.
+**It's looking for a debugger** or tracer of sorts. More specifically, it uses a /proc/\<pid\>/cmdline, which stores the string used to run the program from the shell, so in case you tried to run it with gdb as follows: "gdb ./challenge2", you would fail miserably, and the program will halt, stating its boiling hatred towards your parent.
 
 *Note: It may be possible to circumvent these safeguards if no other safeguards were in place by using for example a symlink to gdb.*
 
