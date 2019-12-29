@@ -47,7 +47,7 @@ To do that, let's fire up the trusty Ghidra, gracefully provided by the NSA.
 
 Upon analyzing the binary, Ghidra finds a list of functions that may or may not prove interesting. We can then go one by one inspecting these functions, to try and find something interesting. After a bit of investigation, we find a few noteworthy functions, which Ghidra thankfully tries to decompile for us.
 
-FUN_00100d10:
+`FUN_00100d10`:
 ```c
 undefined8 FUN_00100d10(void **param_1)
 
@@ -73,7 +73,7 @@ undefined8 FUN_00100d10(void **param_1)
 }
 ```
 
-_INIT_1:
+`_INIT_1`:
 ```c
 void _INIT_1(void)
 
