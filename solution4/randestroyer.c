@@ -3,12 +3,9 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/uaccess.h>
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("ThatFatPat and nmraz");
-
-#define MY_MAJOR 69
-#define MY_MAX_MINORS 1
+#define MY_MAJOR 1
 
 struct my_device_data {
   struct cdev cdev;
@@ -16,30 +13,55 @@ struct my_device_data {
   //...
 };
 
-struct my_device_data devs[MY_MAX_MINORS];
+struct my_device_data dev;
+
+static int my_open(struct inode *inode, struct file *file){
+//   struct my_device_data *my_data;
+//   my_data = container_of(inode->i_cdev, struct my_device_data, cdev);
+//   file->private_data = my_data;
+  return 0;
+}
+static long int my_read(struct file *file, char __user *user_buffer, size_t size, loff_t *offset){
+  // struct my_device_data *my_data;
+  // my_data = (struct my_device_data*) file->private_data;
+	printk(KERN_WARNING "Entered my_read");
+	char A = 'A';
+	for (size_t i = 0; i < size; i++)
+	{
+		copy_to_user(user_buffer + i, &A, 1);
+	}
+	return size;
+}
 
 const struct file_operations my_fops = {.owner = THIS_MODULE,
                                         .open = my_open,
                                         .read = my_read,
-                                        .write = my_write,
-                                        .release = my_release,
-                                        .unlocked_ioctl = my_ioctl};
+                                        // .write = my_write,
+                                        // .release = my_release,
+                                        // .unlocked_ioctl = my_ioctl
+};
 
-int init_module(void) {
-  int i, err;
+int __init init_randestroyer_module(void) {
+	unregister_chrdev_region(MKDEV(1, 8), 1);
 
-  err = register_chrdev_region(MKDEV(MY_MAJOR, 0), 1, "randestroyer");
-  if (err != 0) {
-    /* report error */
-    return err;
-  }
+	int err = register_chrdev_region(MKDEV(1, 8), 1, "randestroyer");
+	if (err != 0) {
+		printk(KERN_WARNING "Failed to register selected chrdev region");
+		return err;
+	}
 
-  for (i = 0; i < MY_MAX_MINORS; i++) {
-    /* initialize devs[i] fields */
-    cdev_init(&devs[i].cdev, &my_fops);
-    cdev_add(&devs[i].cdev, MKDEV(MY_MAJOR, i), 1);
-  }
-
+	cdev_init(&dev.cdev, &my_fops);
+	cdev_add(&dev.cdev, MKDEV(1, 8), 1);
   return 0;
-});
-module_exit(lkm_example_exit);
+}
+
+void __exit exit_randestroyer_module(void){
+  cdev_del(&dev.cdev);
+  unregister_chrdev_region(MKDEV(1, 8), 1);
+}
+
+module_init(init_randestroyer_module);
+module_exit(exit_randestroyer_module);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("ThatFatPat and nmraz");
