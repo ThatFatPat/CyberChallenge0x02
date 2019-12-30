@@ -24,9 +24,11 @@ os.system("""mkdir chroot_jail &&
 print("\n===============")
 print("Executing program")
 print("===============\n")
-challegne2 = subprocess.Popen(["sudo", "chroot", "chroot_jail", "bin/challenge2"], stdin=subprocess.PIPE)
+challegne2 = subprocess.Popen(
+    ["sudo", "chroot", "chroot_jail", "bin/challenge2"], stdin=subprocess.PIPE)
 time.sleep(1)
-challegne2.communicate(bytes("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", encoding="utf-8"))
+challegne2.communicate(
+    bytes("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", encoding="utf-8"))
 
 print("\n===============")
 print("Removing chroot directory")

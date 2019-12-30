@@ -19,7 +19,8 @@ print("Running program!")
 print("===============\n")
 challegne2 = subprocess.Popen(["./challenge2"], stdin=subprocess.PIPE)
 time.sleep(1)
-challegne2.communicate(bytes("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", encoding="utf-8"))
+challegne2.communicate(
+    bytes("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", encoding="utf-8"))
 
 print("\n===============")
 print("Restoring /dev/random")
