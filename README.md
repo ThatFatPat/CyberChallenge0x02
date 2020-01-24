@@ -753,7 +753,7 @@ Now that we have a pretty good understanding of how to circumvent the randomness
     contained. Nothing in the chroot environment can see out past its own, special, root directory without escalating to     
     root privileges. That has earned this type of environment the nickname of a chroot jail. 
     
-You can find the source [here](https://www.hwtogeek.com/441534/how-to-use-the-chroot-command-on-linux/). In this simple guide, he lays out a very simple manner in which we can create a "chroot jail". For those of us who prefer a video guide, one can be found [here](https://www.youtube.com/watch?v=myakVWvRmfc), although you should probably use the first one, as I feel it just does it better.
+You can find the source [here](https://www.howtogeek.com/441534/how-to-use-the-chroot-command-on-linux/). In this simple guide, he lays out a very simple manner in which we can create a "chroot jail". For those of us who prefer a video guide, one can be found [here](https://www.youtube.com/watch?v=myakVWvRmfc), although you should probably use the first one, as I feel it just does it better.
 
 I fully encourage you to check one of these guides out and follow along, as "chroot"-ing is a very important skill that may come in handy at some point. Locking a program in an environment where we control all the variables may prove very productive.
 
